@@ -1,10 +1,23 @@
+// constants
+const CANVAS_WIDTH:  number = 800;
+const CANVAS_HEIGHT: number = 800;
+const MAZE_WIDTH:    number =  20;
+const MAZE_HEIGHT:   number =  20;
+
+const COLORS = {
+    BACKGROUND: "#808080",
+    CELL_WALLS: "#000000",
+    UNVISITED_CELL: "#a0a0a0",
+    VISITED_CELL: "#ffffff",
+    PATH_CELL: "#ed4545",
+    HEAD_CELL: "#52f75d"
+};
+
+
 // typescript stuff
+type pair<T> = [key1:T, key2:T];
 /** A single cell in the maze. */
 interface MazeCell {
-    /** X coordinate in the grid. */
-    x: number,
-    /** Y coordinate in the grid. */
-    y: number,
     /** Whether the cell connects to the cell above it. */
     up: boolean,
     /** Whether the cell connects to the cell below it. */
@@ -15,20 +28,6 @@ interface MazeCell {
     right: boolean
 };
 
-// constants
-const CANVAS_WIDTH:  number = 800;
-const CANVAS_HEIGHT: number = 800;
-const MAZE_WIDTH:    number =  20;
-const MAZE_HEIGHT:   number =  20;
-
-const COLORS = {
-    BACKGROUND: "#808080",
-    CELL_WALLS: "#000000",
-    UNVISITED_CELL: "#c0c0c0",
-    VISITED_CELL: "#e0e0e0",
-    PATH_CELL: "#ed4545",
-    HEAD_CELL: "#52f75d"
-};
 
 /** How wide each cell appears when displayed, in pixels. */
 const cellDisplayWidth = CANVAS_WIDTH / MAZE_WIDTH;
@@ -38,20 +37,20 @@ const cellDisplayHeight = CANVAS_HEIGHT / MAZE_HEIGHT;
 /** All cells in the maze. */
 const mazeGrid: MazeCell[][] = [];
 
-/** All cells that have been visited at some point. */
-const visitedCells: MazeCell[] = [];
+/** The coordinates of cells that have been visited at some point. */
+const visitedCells: pair<number>[] = [];
 
-/** The cells in the current path. */
-const cellPath: MazeCell[] = [];
+/** The coordinates of  cells in the current path. */
+const cellPath: pair<number>[] = [];
 
-const mazeGenerated: boolean = false;
+let mazeGenerated: boolean = false;
 
 /**
  * Returns whether an array of pairs contains a pair.
  */
-function arrayContainsPair<T>(array: [T, T][], pair: [T, T]): boolean {
-    for (let i = 0; i < array.length; ++i) {
-        if (array[i][0] === pair[0] && array[i][1] === pair[1]) {
+function arrayContainsPair<T>(array: pair<T>[], pair: pair<T>): boolean {
+    for (const item of array) {
+        if (item[0] === pair[0] && item[1] === pair[1]) {
             return true;
         }
     }
@@ -77,12 +76,12 @@ function randInt(low: number, high?: number): number {
 /**
  * Draws a maze cell.
  */
-function drawCell(cell: MazeCell, fillColor: string) {
+function drawCell(cell: MazeCell, x: number, y: number, fillColor: string) {
     // makes positioning lines easier
-    const top = cell.y * cellDisplayHeight;
-    const bottom = (cell.y + 1) * cellDisplayHeight;
-    const left = cell.x * cellDisplayWidth;
-    const right = (cell.x + 1) * cellDisplayWidth;
+    const top = y * cellDisplayHeight;
+    const bottom = (y + 1) * cellDisplayHeight;
+    const left = x * cellDisplayWidth;
+    const right = (x + 1) * cellDisplayWidth;
 
     // draw background
     noStroke();
@@ -107,24 +106,98 @@ function drawCell(cell: MazeCell, fillColor: string) {
 }
 
 /**
- * Gets all unvisited cells that are adjacent to a cell's position.
+ * Gets the coordinates of all unvisited cells that are adjacent to another cell's coordinates.
  */
-// function getAdjacentCells
+function getAdjacentCells(pos: pair<number>): pair<number>[] {
+    const x = pos[0], y = pos[1];
+
+    const coords: pair<number>[] = [
+        [x - 1, y],
+        [x + 1, y],
+        [x, y - 1],
+        [x, y + 1]
+    ];
+
+    const adjacentCells: pair<number>[] = [];
+
+    for (const coord of coords) {
+        // make sure the cell is in bounds and not already visited
+        if (coord[0] >= 0 && coord[0] < MAZE_WIDTH && coord[1] >= 0 && coord[1] < MAZE_HEIGHT &&
+            !arrayContainsPair(visitedCells, coord)
+        ) {
+            adjacentCells.push(coord);
+        }
+    }
+
+    return adjacentCells;
+}
+
+/**
+ * Runs a single step of the generator.
+ */
+function stepGenerator() {
+    // grab the coordinates of the head cell
+    const currentHead: pair<number> = cellPath[cellPath.length - 1];
+
+    // find which cells we can carve into
+    const adjacentCells = getAdjacentCells(currentHead);
+
+    // if we're add a dead end, remove the head to step back a cell
+    if (adjacentCells.length === 0) {
+        cellPath.pop();
+
+        // if we've made it all the way back to the start of the path, the maze is fully generated
+        if (cellPath.length === 0) {
+            mazeGenerated = true;
+        }
+    }
+    // otherwise, carve into a new cell
+    else {
+        const newHead = adjacentCells[randInt(adjacentCells.length)];
+
+        // mark the new head as visited and add it to the path
+        visitedCells.push(newHead);
+        cellPath.push(newHead);
+
+        // update the display
+        const currentHeadDisplay = mazeGrid[currentHead[0]][currentHead[1]];
+        const newHeadDisplay = mazeGrid[newHead[0]][newHead[1]];
+
+        // carve up
+        if (newHead[1] < currentHead[1]) {
+            currentHeadDisplay.up = true;
+            newHeadDisplay.down = true;
+        }
+        // carve down
+        else if (newHead[1] > currentHead[1]) {
+            currentHeadDisplay.down = true;
+            newHeadDisplay.up = true;
+        }
+        // carve left
+        else if (newHead[0] < currentHead[0]) {
+            currentHeadDisplay.left = true;
+            newHeadDisplay.right = true;
+        }
+        // carve right
+        else {
+            currentHeadDisplay.right = true;
+            newHeadDisplay.left = true;
+        }
+    }
+}
 
 // for disabling and reenabling keyboard input
 let canvasHovered = true;
 
 function setup() {
-    // create the canvas
-    const canvas = createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
+    // create the canvas and add a tiny margin for border thickness
+    const canvas = createCanvas(CANVAS_WIDTH + 4, CANVAS_HEIGHT + 4);
 
     // populate the grid
     for (let x = 0; x < MAZE_WIDTH; ++x) {
         const column: MazeCell[] = [];
         for (let y = 0; y < MAZE_HEIGHT; ++y) {
             column.push({
-                x: x,
-                y: y,
                 up: false,
                 down: false,
                 left: false,
@@ -133,6 +206,11 @@ function setup() {
         }
         mazeGrid.push(column);
     }
+
+    // start with a random cell
+    const startCell: pair<number> = [randInt(MAZE_WIDTH), randInt(MAZE_HEIGHT)];
+    cellPath.push(startCell);
+    visitedCells.push(startCell);
 
     // WHY DO THESE USE CALLBACKS????
     canvas.mouseOver(() => {
@@ -155,24 +233,51 @@ function setup() {
 function draw() {
     background(COLORS.BACKGROUND);
 
-    noFill();
+    // why is this just named push()???? was there nothing more descriptive????
+    push();
+    // offset so the borders are the correct thickness
+    translate(2, 2);
 
     // draw the maze
     for (let x = 0; x < MAZE_WIDTH; ++x) {
         for (let y = 0; y < MAZE_HEIGHT; ++y) {
             const cell = mazeGrid[x][y];
 
-            drawCell(cell, COLORS.UNVISITED_CELL);
+            // find the correct color to use
+            let cellColor;
+            if (arrayContainsPair(cellPath, [x, y])) {
+                const head = cellPath[cellPath.length - 1];
+
+                if (head[0] === x && head[1] === y) {
+                    cellColor = COLORS.HEAD_CELL;
+                }
+                else {
+                    cellColor = COLORS.PATH_CELL;
+                }
+            }
+            else if (arrayContainsPair(visitedCells, [x, y])) {
+                cellColor = COLORS.VISITED_CELL;
+            }
+            else {
+                cellColor = COLORS.UNVISITED_CELL;
+            }
+
+            drawCell(cell, x, y, cellColor);
         }
     }
+
+    pop();
 }
 
 function _mousePressed() {
-    console.log(`pressed ${mouseButton}`);
+    // console.log(`pressed ${mouseButton}`);
+    if (!mazeGenerated) {
+        stepGenerator();
+    }
 }
 
 function _mouseReleased() {
-    console.log(`pressed ${mouseButton}`);
+    // console.log(`pressed ${mouseButton}`);
 }
 
 function keyPressed(event: KeyboardEvent) {
