@@ -1,8 +1,13 @@
 // constants
-const CANVAS_WIDTH:  number = 800;
+const CANVAS_WIDTH: number = 800;
 const CANVAS_HEIGHT: number = 800;
-const MAZE_WIDTH:    number =  20;
-const MAZE_HEIGHT:   number =  20;
+const MAZE_WIDTH: number = 20;
+const MAZE_HEIGHT: number = 20;
+
+/**
+ * Delay between generator steps, in frames.
+ */
+const STEP_DELAY: number = 1;
 
 const COLORS = {
     BACKGROUND: "#808080",
@@ -44,6 +49,14 @@ const visitedCells: pair<number>[] = [];
 const cellPath: pair<number>[] = [];
 
 let mazeGenerated: boolean = false;
+
+// for disabling and reenabling keyboard input
+let canvasHovered = true;
+
+// for timing generator steps
+let remainingDelay = STEP_DELAY;
+
+let paused: boolean = true;
 
 /**
  * Returns whether an array of pairs contains a pair.
@@ -186,9 +199,6 @@ function stepGenerator() {
     }
 }
 
-// for disabling and reenabling keyboard input
-let canvasHovered = true;
-
 function setup() {
     // create the canvas and add a tiny margin for border thickness
     const canvas = createCanvas(CANVAS_WIDTH + 4, CANVAS_HEIGHT + 4);
@@ -267,13 +277,20 @@ function draw() {
     }
 
     pop();
+
+    // keep generating the maze
+    if (!mazeGenerated && !paused) {
+        --remainingDelay;
+        if (remainingDelay === 0) {
+            remainingDelay = STEP_DELAY;
+            stepGenerator();
+        }
+    }
 }
 
 function _mousePressed() {
-    // console.log(`pressed ${mouseButton}`);
-    if (!mazeGenerated) {
-        stepGenerator();
-    }
+    paused = !paused;
+    remainingDelay = STEP_DELAY;
 }
 
 function _mouseReleased() {
