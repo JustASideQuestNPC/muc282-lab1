@@ -1,8 +1,8 @@
 // constants
-const CANVAS_WIDTH: number = 800;
-const CANVAS_HEIGHT: number = 800;
-const MAZE_WIDTH: number = 20;
-const MAZE_HEIGHT: number = 20;
+const CANVAS_WIDTH: number = 600;
+const CANVAS_HEIGHT: number = 600;
+const MAZE_WIDTH: number = 15;
+const MAZE_HEIGHT: number = 15;
 
 /**
  * Delay between generator steps, in frames.
@@ -116,7 +116,7 @@ class Maze {
             }
             this.#cellGrid.push(column);
         }
-        
+
         // start with a random cell
         const startCell: pair<number> = [randInt(this.#width), randInt(this.#height)];
         this.#cellPath.push(startCell);
@@ -279,11 +279,19 @@ let maze: Maze;
 // for disabling and reenabling keyboard input
 let canvasHovered = true;
 
+let resetButton: p5.Element;
+
 function setup() {
     // create the canvas and add a tiny margin for border thickness
     const canvas = createCanvas(CANVAS_WIDTH + 4, CANVAS_HEIGHT + 4);
 
     maze = new Maze(MAZE_WIDTH, MAZE_HEIGHT, cellDisplayWidth, cellDisplayHeight);
+
+    resetButton = createButton("Reset")
+                 .size(100, 50)
+                 .style("text-align", "center")
+                 .style("font-size", "20px")
+                 .mouseClicked(() => maze.reset());
 
     // WHY DO THESE USE CALLBACKS????
     canvas.mouseOver(() => {
