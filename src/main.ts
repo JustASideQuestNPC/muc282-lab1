@@ -56,6 +56,12 @@ function randInt(low: number, high?: number): number {
     return floor(random(low, high));
 }
 
+// buttons
+let resetButton: p5.Element;
+let pauseButton: p5.Element;
+let stepButton: p5.Element;
+let watchButton: p5.Element;
+
 /**
  * Generates a maze using Recursive Backtracking.
  */
@@ -84,8 +90,14 @@ class Maze {
     /** Whether the maze is fully generated. */
     #generated: boolean;
 
+    /** Whether the generator can be re-paused during watch mode. */
+    #hasWatched: boolean = false;
+
     /** Whether generation is paused. Does nothing if the maze is already generated. */
     paused: boolean = true;
+
+    /** If true, the maze will pause each time the generator hits a dead end. */
+    watchMode: boolean = false;
 
     constructor(mazeWidth: number, mazeHeight: number, displayWidth: number,
                 displayHeight: number) {
@@ -105,6 +117,7 @@ class Maze {
         this.#cellGrid = [];
         this.#visitedCells = [];
         this.#cellPath = [];
+        this.#hasWatched = false;
 
         // populate the grid with disconnected cells
         for (let x = 0; x < this.#width; ++x) {
@@ -129,9 +142,9 @@ class Maze {
     /**
      * Steps the generator a single time.
      */
-    stepGenerator() {
+    stepGenerator(ignorePause: boolean=false) {
         // do nothing if the maze is generated or if generation is paused
-        if (this.#generated || this.paused) { return; }
+        if (this.#generated || (this.paused && !ignorePause)) { return; }
 
         // grab the coordinates of the head (end of the path)
         const currentHead = this.#cellPath[this.#cellPath.length - 1];
@@ -159,6 +172,18 @@ class Maze {
 
         // if we can't carve into any cells, remove the head and step back a cell
         if (adjacentCells.length === 0) {
+            // watch mode stops the generator whenever it hits a dead end
+            if (this.watchMode && !this.#hasWatched) {
+                this.paused = true;
+                pauseButton.html("Unpause");
+
+                // prevent us from pausing again until we've carved at least 1 new cell
+                this.#hasWatched = true;
+
+                // end before stepping backward so the animation looks a little better
+                return;
+            }
+
             this.#cellPath.pop();
             // once we get all the way back to the starting cell, the maze is generated
             if (this.#cellPath.length === 0) {
@@ -167,6 +192,9 @@ class Maze {
         }
     // otherwise, carve into a new cell
     else {
+        // update whether watch mode can pause again
+        this.#hasWatched = false;
+
         const newHead = adjacentCells[randInt(adjacentCells.length)];
 
         // mark the new head as visited and add it to the path
@@ -282,16 +310,15 @@ let maze: Maze;
 // for disabling and reenabling keyboard input
 let canvasHovered = true;
 
-// buttons
-let resetButton: p5.Element, pauseButton: p5.Element;
-
 function setup() {
     // create the canvas and add a tiny margin for border thickness
     const canvas = createCanvas(CANVAS_WIDTH + 4, CANVAS_HEIGHT + 4);
 
     maze = new Maze(MAZE_WIDTH, MAZE_HEIGHT, cellDisplayWidth, cellDisplayHeight);
 
-    resetButton = createButton("Reset")
+    // create all the interface buttons
+    resetButton = createButton("reset")
+                 .html("Reset")
                  .size(100, 50)
                  .style("text-align", "center")
                  .style("font-size", "20px");
@@ -301,7 +328,8 @@ function setup() {
         pauseButton.html("Unpause");
     });
 
-    pauseButton = createButton("Unpause")
+    pauseButton = createButton("toggle pause")
+                 .html("Unpause")
                  .size(100, 50)
                  .style("text-align", "center")
                  .style("font-size", "20px");
@@ -312,6 +340,32 @@ function setup() {
         }
         else {
             pauseButton.html("Pause");
+        }
+    });
+
+    stepButton = createButton("step")
+                .html("Step")
+                .size(100, 50)
+                .style("text-align", "center")
+                .style("font-size", "20px");
+    stepButton.mouseClicked(() => {
+        if (maze.paused) {
+            maze.stepGenerator(true);
+        }
+    });
+
+    watchButton = createButton("toggle watch")
+                 .html("Watch Mode Disabled")
+                 .size(225, 50)
+                 .style("text-align", "center")
+                 .style("font-size", "20px");
+    watchButton.mouseClicked(() => {
+        maze.watchMode = !maze.watchMode;
+        if (maze.watchMode) {
+            watchButton.html("Watch Mode Enabled");
+        }
+        else {
+            watchButton.html("Watch Mode Disabled");
         }
     });
 
