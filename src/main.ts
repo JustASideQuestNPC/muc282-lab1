@@ -9,16 +9,6 @@ const MAZE_HEIGHT: number = 20;
  */
 const STEP_DELAY: number = 1;
 
-const COLORS = {
-    BACKGROUND: "#808080",
-    CELL_WALLS: "#000000",
-    UNVISITED_CELL: "#a0a0a0",
-    VISITED_CELL: "#ffffff",
-    PATH_CELL: "#ed4545",
-    HEAD_CELL: "#52f75d"
-};
-
-
 // typescript stuff
 type pair<T> = [key1:T, key2:T];
 /** A single cell in the maze. */
@@ -33,30 +23,10 @@ interface MazeCell {
     right: boolean
 };
 
-
 /** How wide each cell appears when displayed, in pixels. */
 const cellDisplayWidth = CANVAS_WIDTH / MAZE_WIDTH;
 /** How tall each cell appears when displayed, in pixels. */
 const cellDisplayHeight = CANVAS_HEIGHT / MAZE_HEIGHT;
-
-/** All cells in the maze. */
-const mazeGrid: MazeCell[][] = [];
-
-/** The coordinates of cells that have been visited at some point. */
-const visitedCells: pair<number>[] = [];
-
-/** The coordinates of  cells in the current path. */
-const cellPath: pair<number>[] = [];
-
-let mazeGenerated: boolean = false;
-
-// for disabling and reenabling keyboard input
-let canvasHovered = true;
-
-// for timing generator steps
-let remainingDelay = STEP_DELAY;
-
-let paused: boolean = true;
 
 /**
  * Returns whether an array of pairs contains a pair.
@@ -87,94 +57,122 @@ function randInt(low: number, high?: number): number {
 }
 
 /**
- * Draws a maze cell.
+ * Generates a maze using Recursive Backtracking.
  */
-function drawCell(cell: MazeCell, x: number, y: number, fillColor: string) {
-    // makes positioning lines easier
-    const top = y * cellDisplayHeight;
-    const bottom = (y + 1) * cellDisplayHeight;
-    const left = x * cellDisplayWidth;
-    const right = (x + 1) * cellDisplayWidth;
+class Maze {
+    /** All cells in the maze. */
+    #cellGrid: MazeCell[][];
 
-    // draw background
-    noStroke();
-    fill(fillColor)
-    rect(left, top, cellDisplayWidth, cellDisplayHeight);
+    /** Coordinates of all cells that have been visited at some point. */
+    #visitedCells: pair<number>[] = [];
 
-    // draw walls - if a property is false, the cell is disconnected in that direction
-    stroke("#000000");
-    strokeWeight(4);
-    if (!cell.up) {
-        line(left, top, right, top);
+    /** Coordinates of all cells in the path. */
+    #cellPath: pair<number>[] = [];
+
+    /** Width of the maze in cells */
+    #width: number;
+
+    /** Height of the maze in cells. */
+    #height: number;
+
+    /** How wide each cell appeats when drawn. */
+    #displayWidth: number;
+
+    /** How tall each cell appears when drawn. */
+    #displayHeight: number
+
+    /** Whether the maze is fully generated. */
+    #generated: boolean;
+
+    constructor(mazeWidth: number, mazeHeight: number, displayWidth: number,
+                displayHeight: number) {
+        this.#width = mazeWidth;
+        this.#height = mazeHeight;
+        this.#displayWidth = displayWidth;
+        this.#displayHeight = displayHeight;
+        this.reset();
     }
-    if (!cell.down) {
-        line(left, bottom, right, bottom);
-    }
-    if (!cell.left) {
-        line(left, top, left, bottom);
-    }
-    if (!cell.right) {
-        line(right, top, right, bottom);
-    }
-}
 
-/**
- * Gets the coordinates of all unvisited cells that are adjacent to another cell's coordinates.
- */
-function getAdjacentCells(pos: pair<number>): pair<number>[] {
-    const x = pos[0], y = pos[1];
+    /**
+     * Resets the generator to an empty maze.
+     */
+    reset() {
+        // remove existing data
+        this.#generated = false;
+        this.#cellGrid = [];
+        this.#visitedCells = [];
+        this.#cellPath = [];
 
-    const coords: pair<number>[] = [
-        [x - 1, y],
-        [x + 1, y],
-        [x, y - 1],
-        [x, y + 1]
-    ];
-
-    const adjacentCells: pair<number>[] = [];
-
-    for (const coord of coords) {
-        // make sure the cell is in bounds and not already visited
-        if (coord[0] >= 0 && coord[0] < MAZE_WIDTH && coord[1] >= 0 && coord[1] < MAZE_HEIGHT &&
-            !arrayContainsPair(visitedCells, coord)
-        ) {
-            adjacentCells.push(coord);
+        // populate the grid with disconnected cells
+        for (let x = 0; x < this.#width; ++x) {
+            let column: MazeCell[] = [];
+            for (let y = 0; y < this.#height; ++y) {
+                column.push({
+                    up: false,
+                    down: false,
+                    left: false,
+                    right: false
+                });
+            }
+            this.#cellGrid.push(column);
         }
+        
+        // start with a random cell
+        const startCell: pair<number> = [randInt(this.#width), randInt(this.#height)];
+        this.#cellPath.push(startCell);
+        this.#visitedCells.push(startCell);
     }
 
-    return adjacentCells;
-}
+    /**
+     * Steps the generator a single time.
+     */
+    stepGenerator() {
+        // do nothing if the maze is generated
+        if (this.#generated) { return; }
 
-/**
- * Runs a single step of the generator.
- */
-function stepGenerator() {
-    // grab the coordinates of the head cell
-    const currentHead: pair<number> = cellPath[cellPath.length - 1];
+        // grab the coordinates of the head (end of the path)
+        const currentHead = this.#cellPath[this.#cellPath.length - 1];
 
-    // find which cells we can carve into
-    const adjacentCells = getAdjacentCells(currentHead);
+        // find which cells we can carve into, if any
+        const x = currentHead[0], y = currentHead[1];
 
-    // if we're add a dead end, remove the head to step back a cell
-    if (adjacentCells.length === 0) {
-        cellPath.pop();
+        const adjacentCoords: pair<number>[] = [
+            [x - 1, y],
+            [x + 1, y],
+            [x, y - 1],
+            [x, y + 1]
+        ];
+    
+        const adjacentCells: pair<number>[] = [];
 
-        // if we've made it all the way back to the start of the path, the maze is fully generated
-        if (cellPath.length === 0) {
-            mazeGenerated = true;
+        for (const cell of adjacentCoords) {
+            // make sure the cell is in bounds and unvisited
+            if (cell[0] >= 0 && cell[0] < this.#width && cell[1] >= 0 && cell[1] < this.#height &&
+                !arrayContainsPair(this.#visitedCells, cell)
+            ) {
+                adjacentCells.push(cell);
+            }
         }
-    }
+
+        // if we can't carve into any cells, remove the head and step back a cell
+        if (adjacentCells.length === 0) {
+            this.#cellPath.pop();
+            // once we get all the way back to the starting cell, the maze is generated
+            if (this.#cellPath.length === 0) {
+                this.#generated = true;
+            }
+        }
     // otherwise, carve into a new cell
     else {
         const newHead = adjacentCells[randInt(adjacentCells.length)];
 
         // mark the new head as visited and add it to the path
-        visitedCells.push(newHead);
-        cellPath.push(newHead);
+        this.#visitedCells.push(newHead);
+        this.#cellPath.push(newHead);
 
         // update the display
-        const currentHeadDisplay = mazeGrid[currentHead[0]][currentHead[1]];
-        const newHeadDisplay = mazeGrid[newHead[0]][newHead[1]];
+        const currentHeadDisplay = this.#cellGrid[currentHead[0]][currentHead[1]];
+        const newHeadDisplay = this.#cellGrid[newHead[0]][newHead[1]];
 
         // carve up
         if (newHead[1] < currentHead[1]) {
@@ -197,56 +195,95 @@ function stepGenerator() {
             newHeadDisplay.left = true;
         }
     }
-}
-
-/**
- * Generates a maze using Recursive Backtracking.
- */
-class Maze {
-    /** All cells in the maze. */
-    #cellGrid: MazeCell[][];
-
-    /** Coordinates of all cells that have been visited at some point. */
-    #visitedCells: pair<number>[] = [];
-
-    /** Coordinates of all cells in the path. */
-    #cellPath: pair<number>[] = [];
-
-    /** Width of the maze in cells */
-    width: number;
-
-    constructor(mazeWidth: number, mazeHeight: number) {
-        
     }
 
-    /**
-     * Resets the generator to an empty maze.
-     */
+    /** Draws the entire maze. */
+    render() {
+        // why is this just named push()???? was there nothing more descriptive????
+        push();
+        // offset so the borders are the correct thickness
+        translate(2, 2);
 
+        for (let x = 0; x < this.#cellGrid.length; ++x) {
+            for (let y = 0; y < this.#cellGrid[x].length; ++y) {
+                const cell = this.#cellGrid[x][y];
+        
+                // makes positioning lines easier
+                const top = y * this.#displayHeight;
+                const bottom = (y + 1) * this.#displayHeight;
+                const left = x * this.#displayWidth;
+                const right = (x + 1) * this.#displayWidth;
+
+                // get the correct color
+                let fillColor: string;
+                let coords: pair<number> = [x, y];
+                if (arrayContainsPair(this.#cellPath, coords)) {
+                    const head = this.#cellPath[this.#cellPath.length - 1];
+                    if (head[0] === x && head[1] === y) {
+                        fillColor = "#52f75d";
+                    }
+                    else {
+                        fillColor = "#ed4545";
+                    }
+                }
+                else if (arrayContainsPair(this.#visitedCells, coords)) {
+                    fillColor = "#ffffff";
+                }
+                else {
+                    fillColor = "#a0a0a0";
+                }
+
+                // draw cell background
+                noStroke();
+                fill(fillColor)
+                rect(left, top, this.#displayWidth, this.#displayHeight);
+
+
+                // draw walls - if a property is false, the cell is disconnected in that direction
+                stroke("#000000");
+                strokeWeight(4);
+                if (!cell.up) {
+                    line(left, top, right, top);
+                }
+                if (!cell.down) {
+                    line(left, bottom, right, bottom);
+                }
+                if (!cell.left) {
+                    line(left, top, left, bottom);
+                }
+                if (!cell.right) {
+                    line(right, top, right, bottom);
+                }
+            }
+        }
+
+        pop();
+    }
+
+    // getters
+    /** The width of the maze, in cells. */
+    get width() { return this.#width; }
+    /** The height of the maze, in cells. */
+    get height() { return this.#height; }
+    /** How wide each cell appears when drawn, in pixels. */
+    get displayWidth() { return this.#displayWidth; }
+    /** How tall each cell appears when drawn, in pixels. */
+    get displayHeight() { return this.#displayHeight; }
+    /** Whether the maze is fully generated. */
+    get generated() { return this.#generated; }
 }
+
+// the maze generator
+let maze: Maze;
+
+// for disabling and reenabling keyboard input
+let canvasHovered = true;
 
 function setup() {
     // create the canvas and add a tiny margin for border thickness
     const canvas = createCanvas(CANVAS_WIDTH + 4, CANVAS_HEIGHT + 4);
 
-    // populate the grid
-    for (let x = 0; x < MAZE_WIDTH; ++x) {
-        const column: MazeCell[] = [];
-        for (let y = 0; y < MAZE_HEIGHT; ++y) {
-            column.push({
-                up: false,
-                down: false,
-                left: false,
-                right: false
-            });
-        }
-        mazeGrid.push(column);
-    }
-
-    // start with a random cell
-    const startCell: pair<number> = [randInt(MAZE_WIDTH), randInt(MAZE_HEIGHT)];
-    cellPath.push(startCell);
-    visitedCells.push(startCell);
+    maze = new Maze(MAZE_WIDTH, MAZE_HEIGHT, cellDisplayWidth, cellDisplayHeight);
 
     // WHY DO THESE USE CALLBACKS????
     canvas.mouseOver(() => {
@@ -267,45 +304,15 @@ function setup() {
 }
 
 function draw() {
-    background(COLORS.BACKGROUND);
+    maze.stepGenerator();
 
-    // why is this just named push()???? was there nothing more descriptive????
-    push();
-    // offset so the borders are the correct thickness
-    translate(2, 2);
+    background("#808080");
 
-    // draw the maze
-    // for (let x = 0; x < MAZE_WIDTH; ++x) {
-    //     for (let y = 0; y < MAZE_HEIGHT; ++y) {
-    //         const cell = mazeGrid[x][y];
-
-    //         // find the correct color to use
-    //         let cellColor;
-    //         if (arrayContainsPair(cellPath, [x, y])) {
-    //             const head = cellPath[cellPath.length - 1];
-
-    //             if (head[0] === x && head[1] === y) {
-    //                 cellColor = COLORS.HEAD_CELL;
-    //             }
-    //             else {
-    //                 cellColor = COLORS.PATH_CELL;
-    //             }
-    //         }
-    //         else if (arrayContainsPair(visitedCells, [x, y])) {
-    //             cellColor = COLORS.VISITED_CELL;
-    //         }
-    //         else {
-    //             cellColor = COLORS.UNVISITED_CELL;
-    //         }
-
-    //         drawCell(cell, x, y, cellColor);
-    //     }
-    // }
-
-    pop();
+    maze.render();
 }
 
 function _mousePressed() {
+
 }
 
 function _mouseReleased() {
