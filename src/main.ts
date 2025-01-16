@@ -84,6 +84,9 @@ class Maze {
     /** Whether the maze is fully generated. */
     #generated: boolean;
 
+    /** Whether generation is paused. Does nothing if the maze is already generated. */
+    paused: boolean = true;
+
     constructor(mazeWidth: number, mazeHeight: number, displayWidth: number,
                 displayHeight: number) {
         this.#width = mazeWidth;
@@ -127,8 +130,8 @@ class Maze {
      * Steps the generator a single time.
      */
     stepGenerator() {
-        // do nothing if the maze is generated
-        if (this.#generated) { return; }
+        // do nothing if the maze is generated or if generation is paused
+        if (this.#generated || this.paused) { return; }
 
         // grab the coordinates of the head (end of the path)
         const currentHead = this.#cellPath[this.#cellPath.length - 1];
@@ -279,7 +282,8 @@ let maze: Maze;
 // for disabling and reenabling keyboard input
 let canvasHovered = true;
 
-let resetButton: p5.Element;
+// buttons
+let resetButton: p5.Element, pauseButton: p5.Element;
 
 function setup() {
     // create the canvas and add a tiny margin for border thickness
@@ -290,8 +294,26 @@ function setup() {
     resetButton = createButton("Reset")
                  .size(100, 50)
                  .style("text-align", "center")
-                 .style("font-size", "20px")
-                 .mouseClicked(() => maze.reset());
+                 .style("font-size", "20px");
+    resetButton.mouseClicked(() => {
+        maze.reset();
+        maze.paused = true;
+        pauseButton.html("Unpause");
+    });
+
+    pauseButton = createButton("Unpause")
+                 .size(100, 50)
+                 .style("text-align", "center")
+                 .style("font-size", "20px");
+    pauseButton.mouseClicked(() => {
+        maze.paused = !maze.paused;
+        if (maze.paused) {
+            pauseButton.html("Unpause");
+        }
+        else {
+            pauseButton.html("Pause");
+        }
+    });
 
     // WHY DO THESE USE CALLBACKS????
     canvas.mouseOver(() => {
