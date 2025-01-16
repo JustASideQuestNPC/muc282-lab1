@@ -199,6 +199,32 @@ function stepGenerator() {
     }
 }
 
+/**
+ * Generates a maze using Recursive Backtracking.
+ */
+class Maze {
+    /** All cells in the maze. */
+    #cellGrid: MazeCell[][];
+
+    /** Coordinates of all cells that have been visited at some point. */
+    #visitedCells: pair<number>[] = [];
+
+    /** Coordinates of all cells in the path. */
+    #cellPath: pair<number>[] = [];
+
+    /** Width of the maze in cells */
+    width: number;
+
+    constructor(mazeWidth: number, mazeHeight: number) {
+        
+    }
+
+    /**
+     * Resets the generator to an empty maze.
+     */
+
+}
+
 function setup() {
     // create the canvas and add a tiny margin for border thickness
     const canvas = createCanvas(CANVAS_WIDTH + 4, CANVAS_HEIGHT + 4);
@@ -249,48 +275,37 @@ function draw() {
     translate(2, 2);
 
     // draw the maze
-    for (let x = 0; x < MAZE_WIDTH; ++x) {
-        for (let y = 0; y < MAZE_HEIGHT; ++y) {
-            const cell = mazeGrid[x][y];
+    // for (let x = 0; x < MAZE_WIDTH; ++x) {
+    //     for (let y = 0; y < MAZE_HEIGHT; ++y) {
+    //         const cell = mazeGrid[x][y];
 
-            // find the correct color to use
-            let cellColor;
-            if (arrayContainsPair(cellPath, [x, y])) {
-                const head = cellPath[cellPath.length - 1];
+    //         // find the correct color to use
+    //         let cellColor;
+    //         if (arrayContainsPair(cellPath, [x, y])) {
+    //             const head = cellPath[cellPath.length - 1];
 
-                if (head[0] === x && head[1] === y) {
-                    cellColor = COLORS.HEAD_CELL;
-                }
-                else {
-                    cellColor = COLORS.PATH_CELL;
-                }
-            }
-            else if (arrayContainsPair(visitedCells, [x, y])) {
-                cellColor = COLORS.VISITED_CELL;
-            }
-            else {
-                cellColor = COLORS.UNVISITED_CELL;
-            }
+    //             if (head[0] === x && head[1] === y) {
+    //                 cellColor = COLORS.HEAD_CELL;
+    //             }
+    //             else {
+    //                 cellColor = COLORS.PATH_CELL;
+    //             }
+    //         }
+    //         else if (arrayContainsPair(visitedCells, [x, y])) {
+    //             cellColor = COLORS.VISITED_CELL;
+    //         }
+    //         else {
+    //             cellColor = COLORS.UNVISITED_CELL;
+    //         }
 
-            drawCell(cell, x, y, cellColor);
-        }
-    }
+    //         drawCell(cell, x, y, cellColor);
+    //     }
+    // }
 
     pop();
-
-    // keep generating the maze
-    if (!mazeGenerated && !paused) {
-        --remainingDelay;
-        if (remainingDelay === 0) {
-            remainingDelay = STEP_DELAY;
-            stepGenerator();
-        }
-    }
 }
 
 function _mousePressed() {
-    paused = !paused;
-    remainingDelay = STEP_DELAY;
 }
 
 function _mouseReleased() {
