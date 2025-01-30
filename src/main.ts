@@ -20,6 +20,8 @@ function setup() {
     // this is, as far as i'm aware, the only way to disable the right-click menu without also
     // disabling it for the entire webpage. I SHOULD NOT HAVE TO DO THIS EITHER.
     document.querySelector("canvas").addEventListener("contextmenu", e => e.preventDefault());
+
+    canvas.parent("sketchContainer");
 }
 
 function draw() {
