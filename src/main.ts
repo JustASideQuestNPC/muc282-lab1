@@ -320,10 +320,9 @@ function setup() {
     resetButton = createButton("reset")
                  .html("Reset")
                  .size(100, 50)
-                 .position(8, CANVAS_HEIGHT + 20)
                  .style("text-align", "center")
                  .style("font-size", "20px")
-                 .parent("sketchContainer");
+                 .parent("buttonContainer");
     resetButton.mouseClicked(() => {
         maze.reset();
         maze.paused = true;
@@ -333,10 +332,9 @@ function setup() {
     pauseButton = createButton("toggle pause")
                  .html("Unpause")
                  .size(100, 50)
-                 .position(108, CANVAS_HEIGHT + 20)
                  .style("text-align", "center")
                  .style("font-size", "20px")
-                 .parent("sketchContainer");
+                 .parent("buttonContainer");
     pauseButton.mouseClicked(() => {
         maze.paused = !maze.paused;
         if (maze.paused) {
@@ -350,10 +348,9 @@ function setup() {
     stepButton = createButton("step")
                 .html("Step")
                 .size(100, 50)
-                .position(208, CANVAS_HEIGHT + 20)
                 .style("text-align", "center")
                 .style("font-size", "20px")
-                .parent("sketchContainer");
+                .parent("buttonContainer");
     stepButton.mouseClicked(() => {
         if (maze.paused) {
             maze.stepGenerator(true);
@@ -363,10 +360,9 @@ function setup() {
     watchButton = createButton("toggle watch")
                  .html("Watch Mode Disabled")
                  .size(225, 50)
-                 .position(308, CANVAS_HEIGHT + 20)
                  .style("text-align", "center")
                  .style("font-size", "20px")
-                 .parent("sketchContainer");
+                 .parent("buttonContainer");
     watchButton.mouseClicked(() => {
         maze.watchMode = !maze.watchMode;
         if (maze.watchMode) {
