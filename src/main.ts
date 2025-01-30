@@ -10,7 +10,7 @@ const MAZE_HEIGHT: number = 15;
 const STEP_DELAY: number = 1;
 
 // typescript stuff
-type pair<T> = [key1:T, key2:T];
+type pair = [key1:number, key2:number];
 /** A single cell in the maze. */
 interface MazeCell {
     /** Whether the cell connects to the cell above it. */
@@ -31,7 +31,7 @@ const cellDisplayHeight = CANVAS_HEIGHT / MAZE_HEIGHT;
 /**
  * Returns whether an array of pairs contains a pair.
  */
-function arrayContainsPair<T>(array: pair<T>[], pair: pair<T>): boolean {
+function arrayContainsPair(array: pair[], pair: pair): boolean {
     for (const item of array) {
         if (item[0] === pair[0] && item[1] === pair[1]) {
             return true;
@@ -70,10 +70,10 @@ class Maze {
     #cellGrid: MazeCell[][];
 
     /** Coordinates of all cells that have been visited at some point. */
-    #visitedCells: pair<number>[] = [];
+    #visitedCells: pair[] = [];
 
     /** Coordinates of all cells in the path. */
-    #cellPath: pair<number>[] = [];
+    #cellPath: pair[] = [];
 
     /** Width of the maze in cells */
     #width: number;
@@ -134,7 +134,7 @@ class Maze {
         }
 
         // start with a random cell
-        const startCell: pair<number> = [randInt(this.#width), randInt(this.#height)];
+        const startCell: pair = [randInt(this.#width), randInt(this.#height)];
         this.#cellPath.push(startCell);
         this.#visitedCells.push(startCell);
     }
@@ -152,14 +152,14 @@ class Maze {
         // find which cells we can carve into, if any
         const x = currentHead[0], y = currentHead[1];
 
-        const adjacentCoords: pair<number>[] = [
+        const adjacentCoords: pair[] = [
             [x - 1, y],
             [x + 1, y],
             [x, y - 1],
             [x, y + 1]
         ];
     
-        const adjacentCells: pair<number>[] = [];
+        const adjacentCells: pair[] = [];
 
         for (const cell of adjacentCoords) {
             // make sure the cell is in bounds and unvisited
@@ -247,7 +247,7 @@ class Maze {
 
                 // get the correct color
                 let fillColor: string;
-                let coords: pair<number> = [x, y];
+                let coords: pair = [x, y];
                 if (arrayContainsPair(this.#cellPath, coords)) {
                     const head = this.#cellPath[this.#cellPath.length - 1];
                     if (head[0] === x && head[1] === y) {
@@ -320,8 +320,10 @@ function setup() {
     resetButton = createButton("reset")
                  .html("Reset")
                  .size(100, 50)
+                 .position(8, CANVAS_HEIGHT + 20)
                  .style("text-align", "center")
-                 .style("font-size", "20px");
+                 .style("font-size", "20px")
+                 .parent("sketchContainer");
     resetButton.mouseClicked(() => {
         maze.reset();
         maze.paused = true;
@@ -331,8 +333,10 @@ function setup() {
     pauseButton = createButton("toggle pause")
                  .html("Unpause")
                  .size(100, 50)
+                 .position(108, CANVAS_HEIGHT + 20)
                  .style("text-align", "center")
-                 .style("font-size", "20px");
+                 .style("font-size", "20px")
+                 .parent("sketchContainer");
     pauseButton.mouseClicked(() => {
         maze.paused = !maze.paused;
         if (maze.paused) {
@@ -346,8 +350,10 @@ function setup() {
     stepButton = createButton("step")
                 .html("Step")
                 .size(100, 50)
+                .position(208, CANVAS_HEIGHT + 20)
                 .style("text-align", "center")
-                .style("font-size", "20px");
+                .style("font-size", "20px")
+                .parent("sketchContainer");
     stepButton.mouseClicked(() => {
         if (maze.paused) {
             maze.stepGenerator(true);
@@ -357,8 +363,10 @@ function setup() {
     watchButton = createButton("toggle watch")
                  .html("Watch Mode Disabled")
                  .size(225, 50)
+                 .position(308, CANVAS_HEIGHT + 20)
                  .style("text-align", "center")
-                 .style("font-size", "20px");
+                 .style("font-size", "20px")
+                 .parent("sketchContainer");
     watchButton.mouseClicked(() => {
         maze.watchMode = !maze.watchMode;
         if (maze.watchMode) {
